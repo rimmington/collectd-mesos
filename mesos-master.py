@@ -240,6 +240,8 @@ def parse_stats(conf, json):
 
 def dispatch_stat(result, name, key, conf):
     """Read a key from info response data and dispatch a value"""
+    if key is 'master/elected' and result is None:
+        result = 0
     if result is None:
         log_verbose(conf['verboseLogging'], 'mesos-master plugin: Value not found for %s' % (name))
         return
