@@ -25,6 +25,7 @@ MESOS_HOST = "localhost"
 MESOS_PORT = 5050
 MESOS_VERSION = "0.22.0"
 MESOS_URL = ""
+SEND_FOLLOWER_METRICS = False
 VERBOSE_LOGGING = False
 
 CONFIGS = []
@@ -185,6 +186,7 @@ def configure_callback(conf):
     verboseLogging = VERBOSE_LOGGING
     version = MESOS_VERSION
     instance = MESOS_INSTANCE
+    sendFollowerMetrics = SEND_FOLLOWER_METRICS
     for node in conf.children:
         if node.key == 'Host':
             host = node.values[0]
@@ -196,6 +198,8 @@ def configure_callback(conf):
             version = node.values[0]
         elif node.key == 'Instance':
             instance = node.values[0]
+        elif node.key == 'SendFollowerMetrics':
+            sendFollowerMetrics = bool(node.values[0])
         else:
             collectd.warning('mesos-master plugin: Unknown config key: %s.' % node.key)
             continue
@@ -208,6 +212,7 @@ def configure_callback(conf):
         'verboseLogging': verboseLogging,
         'version': version,
         'instance': instance,
+        'sendFollowerMetrics': sendFollowerMetrics,
     })
 
 def fetch_stats():
@@ -222,9 +227,9 @@ def fetch_stats():
 
 def parse_stats(conf, json):
     """Parse stats response from Mesos"""
-    """Ignore stats if coming from non-leading mesos master"""
+    """By default, ignore stats if coming from non-leading mesos master"""
     elected_result = lookup_stat('master/elected', json, conf)
-    if elected_result == 1:
+    if conf['sendFollowerMetrics'] or elected_result == 1:
         for name, key in get_stats_string(conf['version']).iteritems():
             result = lookup_stat(name, json, conf)
             dispatch_stat(result, name, key, conf)
